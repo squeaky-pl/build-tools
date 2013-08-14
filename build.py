@@ -32,12 +32,15 @@ def parse_spec(spec):
             content = element.text.split()
             options.update(dict(zip(content[::2], content[1::2])))
         if element.tag == 'install':
-            sources = element.text.split()
+            for source in element.text.strip().splitlines():
+                line = source.split()
+                source = line[0]
+                source_options = options.copy()
+                source_options.update(dict.fromkeys(line[1:], True))
 
-            for source in sources:
                 install.append({
                     'source': source,
-                    'options': options.copy()
+                    'options': source_options
                 })
 
     return install
@@ -66,8 +69,21 @@ def execute_spec(install):
 
         archive_dir = join(dest_dir, first_component(dest))
         chdir(archive_dir)
-        check_call(['./configure'])
+
+        configure = ['./configure']
+        try:
+            prefix = options.pop('prefix')
+        except KeyError:
+            pass
+        else:
+            prefix = join(here, prefix)
+            configure.append('--prefix=' + prefix)
+
+        configure.extend(k for k, v in options.items() if v is True)
+
+        check_call(configure)
         check_call(['make', '-j4'])
+        check_call(['make', 'install'])
 
 
 def main():
