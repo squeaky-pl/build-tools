@@ -3,8 +3,9 @@
 
 from os.path import dirname, abspath, join, exists, normpath, basename
 from xml.etree import ElementTree
-from subprocess import check_call, check_output
+from subprocess import check_call, check_output, Popen, PIPE
 from os import chdir
+from textwrap import dedent
 
 
 def find_spec():
@@ -38,7 +39,14 @@ def parse_spec(spec):
                 source_options = options.copy()
                 source_options.update(dict.fromkeys(line[1:], True))
 
+                patches = {}
+                for subelement in element:
+                    if subelement.tag == 'patch':
+                        patches[subelement.attrib['to']] = (
+                            dedent(subelement.text))
+
                 install.append({
+                    'patches': patches,
                     'source': source,
                     'options': source_options
                 })
@@ -69,6 +77,10 @@ def execute_spec(install):
 
         archive_dir = join(dest_dir, first_component(dest))
         chdir(archive_dir)
+
+        for path, stdin in spec['patches'].items():
+            patch = Popen(['patch', path], stdin=PIPE)
+            patch.communicate(stdin)
 
         configure = ['./configure']
         try:
