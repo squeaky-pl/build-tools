@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 
-from os.path import dirname, abspath, join, exists, normpath, basename
+from os.path import (
+    dirname, abspath, join, exists, normpath, basename, isabs)
+from sys import platform
 from xml.etree import ElementTree
 from subprocess import check_call, check_output, Popen, PIPE
-from os import chdir
+from os import chdir, makedirs
 from textwrap import dedent
 
 
@@ -64,12 +66,21 @@ here = dirname(abspath(__file__))
 
 
 def execute_spec(install):
+    from pdb import set_trace; set_trace()
+
     for spec in install:
         options = spec['options']
         dest = options.get('cd', here)
         source = spec['source']
         name = basename(source)
         dest_dir = join(here, dest)
+
+        if isabs(dest_dir) and platform == 'win32':
+            dest_dir = 'c:' + dest_dir
+
+        if not exists(dest_dir):
+            makedirs(dest_dir)
+
         dest = join(dest_dir, name)
 
         check_call(['wget', '-O', dest, source])
