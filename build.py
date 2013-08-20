@@ -2,12 +2,30 @@
 
 
 from os.path import (
-    dirname, abspath, join, exists, normpath, basename, isabs)
+    dirname, abspath, join, exists as _exists, normpath, basename, isabs)
 from sys import platform
 from xml.etree import ElementTree
 from subprocess import check_call, check_output, Popen, PIPE
-from os import chdir, makedirs
+from os import chdir as _chdir, makedirs as _makedirs
 from textwrap import dedent
+
+if platform == 'win32':
+    def windozed(function):
+        def wrapper(path):
+            if isabs(path):
+                path = path[1] + ':' + path[2:]
+
+            return function(path)
+
+        return wrapper
+
+    chdir = windozed(_chdir)
+    makedirs = windozed(_makedirs)
+    exists = windozed(_exists)
+else:
+    chdir = _chdir
+    makedies = _makedirs
+    exists = _exists
 
 
 def find_spec():
@@ -15,7 +33,7 @@ def find_spec():
 
     while 1:
         spec = join(current, 'build.spec.xml')
-        if exists(spec):
+        if _exists(spec):
             return spec
 
         if current == '/':
@@ -66,8 +84,6 @@ here = dirname(abspath(__file__))
 
 
 def execute_spec(install):
-    from pdb import set_trace; set_trace()
-
     for spec in install:
         options = spec['options']
         dest = options.get('cd', here)
@@ -76,7 +92,7 @@ def execute_spec(install):
         dest_dir = join(here, dest)
 
         if isabs(dest_dir) and platform == 'win32':
-            dest_dir = 'c:' + dest_dir
+            dest_dir = '/c' + dest_dir
 
         if not exists(dest_dir):
             makedirs(dest_dir)
@@ -94,6 +110,10 @@ def execute_spec(install):
             patch.communicate(stdin)
 
         configure = ['./configure']
+
+        if platform == 'win32':
+            configure.insert(0, 'bash')
+
         try:
             prefix = options.pop('prefix')
         except KeyError:
