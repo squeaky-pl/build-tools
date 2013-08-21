@@ -6,7 +6,7 @@ from os.path import (
 from sys import platform
 from xml.etree import ElementTree
 from subprocess import check_call, check_output, Popen, PIPE
-from os import chdir as _chdir, makedirs as _makedirs
+from os import chdir as _chdir, makedirs as _makedirs, putenv
 from textwrap import dedent
 
 if platform == 'win32':
@@ -108,6 +108,20 @@ def execute_spec(install):
         for path, stdin in spec['patches'].items():
             patch = Popen(['patch', path], stdin=PIPE)
             patch.communicate(stdin)
+
+        try:
+            cppflags = options['cppflags']
+        except KeyError:
+            pass
+        else:
+            putenv('CPPFLAGS', '-I' + cppflags)
+
+        try:
+            rpath = options['rpath']
+        except KeyError:
+            pass
+        else:
+            putenv('LDFLAGS', '-L{0} -Wl,-rpath,{0}'.format(rpath))
 
         configure = ['./configure']
 
